@@ -34,4 +34,10 @@ public class ReceiptResponse {
         this.created = dbRecord.getUploaded();
         this.id = dbRecord.getId();
     }
+    public ReceiptResponse(Integer id, String merchantName, BigDecimal value, Time created) {
+        this.id = id;
+        this.merchantName = merchantName;
+        this.value = value;
+        this.created = created;
+    }
 }
