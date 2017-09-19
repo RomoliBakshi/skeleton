@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script data-require="jquery@*" data-semver="3.1.1" src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <style>
+        #container {
+
+        }
+        H1 {float: left;}
+        .button{
+            background-color:#55A;
+            border: 1px solid #229;
+            width: 100px;
+            float: right;
+            font-size: 2em;
+            color: white;
+            text-align: center;
+        }
+        #receiptList {
+            clear: both;
+            width: 50%;
+        }
+        .receipt {
+            background-color: #eee;
+            margin-bottom: 5px;
+        }
+        #addReceiptInput{
+            display: none;
+            float: right;
+        }
+    </style>
+    <script>
+
+        const api = ""; // <- do not need a root api URL if this page is served directly by the API
+
+        // Empty current list of receipts and repopulate it with everything in the database
+        var populateReceipts = function(){
+            // Clear Table Body
+            $("#receiptList").empty();
+
+            var tagsByReceiptId = {};
+            // Get receipt ids and associated tags
+            $.getJSON(api+"/tags", function(tagInformation) {
+                for (var i = 0; i < tagInformation.length; i++) {
+                    var tagJson = tagInformation[i];
+                    if(tagsByReceiptId.hasOwnProperty(tagJson["receiptId"])){
+                        tagsByReceiptId[tagJson["receiptId"]].push(tagJson["tag"]);
+                    }
+                    else{
+                        tagsByReceiptId[tagJson["receiptId"]] = [tagJson["tag"]];
+                    }
+                }
+            }).done(function(){
+                // Get receipts and then populate table
+                $.getJSON(api+"/receipts", function(receiptsToPopulate) {
+                    // First populate header
+                    $(`<tr>
+                        <th>Time</th>
+                        <th>Merchant</th>
+                        <th>$</th>
+                        <th>Tags</th>
+                       </tr>`).appendTo($("#receiptList"));
+                    for (var i = 0; i < receiptsToPopulate.length; i++) {
+                        var receipt = receiptsToPopulate[i];
+                        $(`<tr id=${receipt.id} class="receipt">
+                            <td class="created">${receipt.created}</td>
+                            <td class="merchant">${receipt.merchantName}</td>
+                            <td class="amount">${receipt.value}</td>
+                            <td id=${"row" + i} class="tags"><button class="add-tag" onclick="addTag(this)">Add +</button></td>
+                       </tr>`).appendTo($("#receiptList"));
+                        if(tagsByReceiptId.hasOwnProperty(receipt.id)){
+                            for (var j = 0; j < tagsByReceiptId[receipt.id].length; j++){
+                                $(`<button class="tagValue" onclick="removeTag(this)">${tagsByReceiptId[receipt.id][j]}</button>`).appendTo($("#row" + i));
+                            }
+                        }
+                    }
+                });
+            });
+        };
+
+        // TAG FUNCTIONALITY
+        // Add tags
+        var addTag = function(element){
+            // Add input element for specific row
+            var tagId = element.parentNode.id;
+            var rowId = element.parentNode.parentNode.id;
+            $(`<input class="tag_input">`)
+                .appendTo($("#" + tagId))
+                .keypress(function(key) {
+                    if(key.which == 13) {
+                        $.ajax({
+                            type: "PUT",
+                            url: api+"/tags/" + $(this).val(),
+                            data: rowId,
+                            contentType : 'application/json',
+                        }).done(function() {
+                            populateReceipts();
+                        });
+                    }
+                });
+        };
+
+        // Remove tags
+        var removeTag = function(element){
+            // Put request for that row Id
+            var rowId = element.parentNode.parentNode.id;
+            $.ajax({
+                type: "PUT",
+                url: api+"/tags/" + element.innerHTML,
+                data: rowId,
+                contentType : 'application/json',
+            }).done(function() {
+                populateReceipts();
+            });
+        };
+
+        // This is the idiomatic way to ensure that JQuery does not
+        // execute until the page has loaded
+        $(function(){
+            populateReceipts();
+
+            // RECEIPT FUNCTIONALITY
+            // Toggle "Add Receipts" input
+            $("#add-receipt").click(function(){
+                $("#addReceiptInput").toggle();
+            });
+
+            // Cancel button in "Add Receipts"
+            $("#cancel-receipt").click(function(){
+                $("#merchant").val("");
+                $("#amount").val("");
+                $("#addReceiptInput").toggle();
+            });
+
+            // Save button in "Add Receipts"
+            $("#save-receipt").click(function(){
+                // Post new receipt
+                $.ajax({
+                    type: "POST",
+                    url: api+"/receipts",
+                    data: JSON.stringify({ "merchant": $("#merchant").val(), "amount" : $("#amount").val() }),
+                    contentType : 'application/json',
+                }).done(function() {
+                    populateReceipts();
+                });
+
+                // Discard input values and toggle
+                $("#merchant").val("");
+                $("#amount").val("");
+                $("#addReceiptInput").toggle();
+            });
+        });
+    </script>
+</head>
+
+<body>
+<DIV id="container">
+    <h1>My Receipts</h1>
+    <button id="add-receipt" class="button">+</button>
+    <div id="addReceiptInput">
+        <label for="merchant">Merchant Name:</label>
+        <input id="merchant" type="text" name="merchantInput">
+        <label for="amount">Amount:</label>
+        <input id="amount" type="number" name="amountInput">
+        <button id="cancel-receipt">Cancel</button>
+        <button id="save-receipt">Save</button>
+    </div>
+    <!--<div id="receiptList">-->
+        <!--<table id="receiptTable" style="width:100%">-->
+            <!--<thead>-->
+            <!--<tr>-->
+                <!--<th>Time</th>-->
+                <!--<th>Merchant</th>-->
+                <!--<th>$</th>-->
+                <!--<th>Tags</th>-->
+            <!--</tr>-->
+            <!--</thead>-->
+            <!--<tbody id="receiptTableBody">-->
+            <!--</tbody>-->
+        <!--</table>-->
+    </div>
+        <table id="receiptList" style="width:100%">
+        </table>
+</DIV>
+</body>
+
+</html>

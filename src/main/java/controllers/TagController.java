@@ -1,6 +1,7 @@
 package controllers;
 
 import api.ReceiptResponse;
+import api.TagResponse;
 import dao.TagDao;
 import org.jooq.Record;
 import javax.ws.rs.*;
@@ -8,6 +9,7 @@ import javax.ws.rs.core.MediaType;
 import java.util.List;
 import java.util.ArrayList;
 import static generated.Tables.RECEIPTS;
+import static generated.Tables.TAGS;
 
 @Path("/tags")
 @Consumes(MediaType.APPLICATION_JSON)
@@ -17,6 +19,19 @@ public class TagController {
 
     public TagController(TagDao tags) {
         this.tags = tags;
+    }
+    @GET
+    @Path("")
+    public List<TagResponse> getReceiptsWithAllTags(){
+        List<Record> tagRecords = tags.getAllReceipts();
+        List<TagResponse> tagResponses = new ArrayList<TagResponse>();
+        for (Record record: tagRecords) {
+            TagResponse tagResponse = new TagResponse(
+                    record.getValue(TAGS.RECEIPT_ID),
+                    record.getValue(TAGS.TAG));
+            tagResponses.add(tagResponse);
+        }
+        return tagResponses;
     }
 
     @PUT
