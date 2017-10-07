@@ -35,10 +35,11 @@
         }
 
         #vidwrap {
+            display: block;
             margin: 20px 0;
         }
 
-        #start, #snapshot {
+        #start-camera, #take-pic, #take-pic-cancel {
             height: 3em;
         }
     </style>
@@ -86,7 +87,13 @@
                         success: function() {},
                     })
                         .then(response => {
-                            $('video').after(`<div>got response: <pre>${JSON.stringify(response)}</pre></div>`);
+                            $("#addReceiptInput").toggle();
+                            $("#merchant").val(response.merchantName);
+                            $("#amount").val(response.amount);
+                            $('#take-pic').prop('disabled', true);
+                            $('#take-pic-cancel').prop('disabled', true);
+                            track.stop();
+                            //$('video').after(`<div>got response: <pre>${JSON.stringify(response)}</pre></div>`);
                         })
                         .always(() => console.log('request complete'));
 
@@ -217,9 +224,29 @@
                 $("#addReceiptInput").toggle();
             });
 
-            $('#start').on('click', startVideo);
-            $('video').on('play', () => $('#snapshot').prop('disabled', false));
-            $('#snapshot').on('click', takeSnapshot);
+            $('#start-camera').on('click', startVideo);
+            $('video').on('play', () => {
+                $('#take-pic').prop('disabled', false);
+                $('#take-pic-cancel').prop('disabled', false);
+            });
+
+            $('#take-pic').click(function(){
+                // Take a snapshot
+                takeSnapshot();
+            });
+
+            $('#take-pic-cancel').click(function(){
+                // Cancel taking a snapshot
+                $('#take-pic').prop('disabled', true);
+                $('#take-pic-cancel').prop('disabled', true);
+                track.stop();
+
+                // Cancel add receipts
+                $("#addReceiptInput").hide();
+                $("#merchant").val("");
+                $("#amount").val("");
+
+            });
         });
     </script>
 </head>
@@ -237,8 +264,9 @@
         <button id="save-receipt">Save</button>
     </div>
     <!-- STUFF ADAM GAVE US -->
-    <button id="start">Start Video</button>
-    <button id="snapshot" disabled="true">Take a Snapshot!</button>
+    <button id="start-camera">Start Video</button>
+    <button id="take-pic" disabled="true">Take a Snapshot!</button>
+    <button id="take-pic-cancel" disabled="true">Cancel</button>
     <br>
     <div id="vidwrap">
         <video autoplay></video>

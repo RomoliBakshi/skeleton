@@ -4,10 +4,13 @@ import api.ReceiptSuggestionResponse;
 import com.google.cloud.vision.v1.*;
 import com.google.protobuf.ByteString;
 import java.math.BigDecimal;
+import java.text.DecimalFormat;
 import java.util.Base64;
 import java.util.Collections;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
+
+import javafx.util.converter.BigDecimalStringConverter;
 import org.hibernate.validator.constraints.NotEmpty;
 
 import static java.lang.System.out;
@@ -51,13 +54,38 @@ public class ReceiptImageController {
             // Your Algo Here!!
             // Sort text annotations by bounding polygon.  Top-most non-decimal text is the merchant
             // bottom-most decimal text is the total amount
-            for (EntityAnnotation annotation : res.getTextAnnotationsList()) {
-                out.printf("Position : %s\n", annotation.getBoundingPoly());
-                out.printf("Text: %s\n", annotation.getDescription());
+            EntityAnnotation annotation = res.getTextAnnotations(0);
+            String[] receiptItems = annotation.getDescription().split("\\n");
+
+            // Take first receipt item that isn't only numerical as the merchant name
+            String regex = "[0-9.]*";
+            for (String item : receiptItems){
+                if(!item.matches(regex)){
+                    merchantName = item;
+                    break;
+                }
             }
 
-            //TextAnnotation fullTextAnnotation = res.getFullTextAnnotation();
+            // Take last receipt item that is only numerical as the merchant name
+            DecimalFormat decimalFormat = new DecimalFormat();
+            decimalFormat.setParseBigDecimal(true);
+            for(int i = receiptItems.length - 1; i >= 0; i--){
+                String item = receiptItems[i];
+                if(item.matches(regex)){
+                    amount = (BigDecimal) decimalFormat.parse(item);
+                    break;
+                }
+            }
+
+//            for (EntityAnnotation annotation : res.getTextAnnotationsList()) {
+//                out.printf("Position : %s\n", annotation.getBoundingPoly());
+//                out.printf("Text: %s\n", annotation.getDescription());
+//            }
+//            TextAnnotation fullTextAnnotation = res.getFullTextAnnotation();
             return new ReceiptSuggestionResponse(merchantName, amount);
+        }
+        catch (Exception e){
+            return new ReceiptSuggestionResponse(null, null);
         }
     }
 }
